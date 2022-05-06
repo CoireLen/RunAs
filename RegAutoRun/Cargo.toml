@@ -1,12 +1,9 @@
 [package]
-name = "MakeConfigTool"
+name = "RegAutoRun"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-autoaes ={path="../autoaes"}
 win32run ={path="../win32run"}
-fltk = "1.3.4"
-md5 = "0.7.0"

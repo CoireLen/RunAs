@@ -3,8 +3,9 @@ members = [
     "autoaes",
     "MakeConfigTool"
 ]
+
 [package]
-name = "RunAsAdministrator"
+name = "RunAs"
 version = "0.1.0"
 edition = "2021"
 
@@ -12,19 +13,8 @@ edition = "2021"
 
 [dependencies]
 autoaes ={path ="autoaes"}
+win32run ={path ="win32run"}
 configster = "0.1.1"
 libc = "0.2.123"
-[dependencies.windows]
-version = "0.35.0"
-features = [
-    "Win32_Foundation",
-    "Win32_System_Threading",
-    "Win32_System_WindowsProgramming"
-]
-[dependencies.windows-sys]
-version = "0.35.0"
-features = [
-    "Win32_Foundation",
-    "Win32_System_Threading",
-    "Win32_System_WindowsProgramming"
-]
+md5 = "0.7.0"
+
