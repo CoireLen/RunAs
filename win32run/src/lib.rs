@@ -1,8 +1,9 @@
 use windows_sys::Win32::{
     Security::{AllocateAndInitializeSid,SID_IDENTIFIER_AUTHORITY,CheckTokenMembership},
-    UI::WindowsAndMessaging::MessageBoxA,
+    UI::WindowsAndMessaging::MessageBoxW,
     Foundation::{GetLastError,PSID},
     System::{
+        Registry::{RegCreateKeyExA,RegSetValueExA},
         WindowsProgramming::GetComputerNameA,
         Diagnostics::Debug::*,
         Threading::{CreateProcessWithLogonW,STARTUPINFOW,PROCESS_INFORMATION}}};
@@ -10,12 +11,22 @@ use std::result::Result;
 use std::ptr;
 use std::mem::size_of_val;
 pub fn Runas(user:String,domino:String,pswd:String,exec:String)->Result<(),String>{
+    println!("exec:{}",exec);
     let (user,domino,pswd,exec)=(s_to_vec(user),s_to_vec(domino),s_to_vec(pswd),s_to_vec(exec));
     let si=STARTUPINFOW::new();
     let mut pi=PROCESS_INFORMATION::new();
     let mut err=1;
     unsafe{
-    err=CreateProcessWithLogonW(user.as_ptr() as *mut u16,domino.as_ptr() as *mut u16, pswd.as_ptr() as *mut u16, 0 ,ptr::null_mut(),exec.as_ptr() as *mut u16, 0,ptr::null_mut(),ptr::null_mut(),&si,&mut pi);
+    err=CreateProcessWithLogonW(
+        user.as_ptr() as *mut u16,
+        domino.as_ptr() as *mut u16, 
+        pswd.as_ptr() as *mut u16, 
+        0,
+        ptr::null(),
+        exec.as_ptr() as *mut u16, 
+        0,ptr::null_mut(),
+        ptr::null_mut(),
+        &si,&mut pi);
     }
     if err==0{
         return Err(LastErrorToString());
@@ -23,14 +34,19 @@ pub fn Runas(user:String,domino:String,pswd:String,exec:String)->Result<(),Strin
     Ok(())
 }
 fn LastErrorToString()->String{
-    let mut info:Vec<u8> =vec![0;1024];
+    let mut info:Vec<u16> =vec![0;1024];
     let mut error;
     unsafe{
         error=GetLastError();
-    let err=FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM|FORMAT_MESSAGE_IGNORE_INSERTS,
-        ptr::null_mut(),error,0u32,info.as_mut_ptr(),1023,ptr::null_mut());
+        if error!=0{
+            let err=FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM|FORMAT_MESSAGE_IGNORE_INSERTS,
+                ptr::null_mut(),error,0u32,info.as_mut_ptr(),1023,ptr::null_mut());
+        }
+        else{
+
+        }
     }
-    String::from_utf8(info).expect(format!("转换错误:{}",error).as_str())
+    String::from_utf16(&info[..]).expect("转换错误")
 }
 trait si{
     fn new()->STARTUPINFOW;
@@ -74,11 +90,18 @@ impl pi for PROCESS_INFORMATION{
     }
 }
 fn s_to_vec(s:String)->Vec<u16>{
-    s.as_bytes().iter().map(|x|*x as u16).collect::<Vec<u16>>()
+    let mut out:Vec<u16>=s.encode_utf16().collect();
+    out.push(0);
+    out
 }
 pub fn Message(title:String,msg:String){
+    let (mut title,mut msg)=(title,msg);
+    msg.push('\0');
+    title.push('\0');
+    let msgu16:Vec<u16>=msg.encode_utf16().collect();
+    let titleu16:Vec<u16>=title.encode_utf16().collect();
     unsafe{
-    MessageBoxA(0, msg.as_ptr(), title.as_ptr(), 0u32);
+    MessageBoxW(0, msgu16.as_ptr(), titleu16.as_ptr(), 0u32);
     }
 }
 pub fn GetComputerName()->String{
@@ -102,12 +125,52 @@ pub fn isAdministrator()->bool{
             0, 0, 0, 0, 0, 0, 
             &mut psid)==0
             {
-                Message("AllocateAndInitializeSid".to_string(), LastErrorToString());
+                Message("错误AllocateAndInitializeSid\0".to_string(), LastErrorToString());
             };
         if CheckTokenMembership(0,psid,&mut isadmin)==0{
-            Message("CheckTokenMembership".to_string(), LastErrorToString());
+            Message("错误CheckTokenMembership".to_string(), LastErrorToString());
         }
         };
     
     isadmin!=0
+}
+
+pub fn setAutoRun(valuename:String,exepath:String){
+    let hkeyroot="HKEY_LOCAL_MACHINE";
+    let regaddr="SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run\0";
+    let mut autorunexepath=exepath;
+    let mut valuename=valuename;
+    let mut hkey=0isize;
+    let mut err=0;
+    unsafe{
+        err=RegCreateKeyExA(-2_147_483_646isize, 
+            regaddr.as_ptr(), 
+            0, 
+            ptr::null(), 
+            0u32, 
+            983103u32, 
+            ptr::null(), 
+            &mut hkey, 
+            ptr::null_mut());
+    }
+    if err!=0{
+        Message("错误RegCreateKeyExA".to_string(),LastErrorToString());
+    }
+    else{
+        unsafe{
+            autorunexepath.push('\0');
+            valuename.push('\0');
+            err=RegSetValueExA(
+                hkey, 
+                valuename.as_ptr(),
+                0, 
+                1u32, 
+                autorunexepath.as_ptr(), 
+                autorunexepath.len()as u32)
+        }
+        if err!=0{
+            Message("错误RegSetValueExA".to_string(),LastErrorToString());
+        }
+    }
+    Message("提示".to_string(), "已添加至注册表自启动".to_string())
 }

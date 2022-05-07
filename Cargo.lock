@@ -7,6 +7,7 @@ name = "MakeConfigTool"
 version = "0.1.0"
 dependencies = [
  "autoaes",
+ "configster",
  "fltk",
  "md5",
  "win32run",

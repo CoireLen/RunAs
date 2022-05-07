@@ -3,11 +3,11 @@ use win32run::*;
 use md5;
 use std::fs::File;
 use std::io::*;
-
+use configster;
 fn main(){
     let config_vec=configster::parse_file("./config.conf", ',').unwrap();
     let (mut user,mut exec,mut pswd,mut domino,mut filemd5)=(String::new(),String::new(),String::new(),String::new(),String::new());
-    let caes=autoaes::C_AES::new("hotron123".to_string());
+    let caes=autoaes::C_AES::new("pswd123".to_string());
     
     for i in &config_vec{
         if i.option=="user"{
@@ -29,12 +29,7 @@ fn main(){
     }
     if filemd5!=""{
         let  path=exec.clone();
-        let mut usepath=path[1..path.len()-1].to_string();
-        for i in 0..usepath.len(){
-            if usepath.pop().unwrap()=='\"' {
-                break;
-            }
-        }
+        let mut usepath=path.to_string();
         let mut needopenfile=File::open(usepath.clone()).expect(usepath.as_str());
         let mut filedata=Vec::new();
         needopenfile.read_to_end(&mut filedata).unwrap();
@@ -51,6 +46,18 @@ fn main(){
     if domino==""{
         domino=GetComputerName();
     }
+    let mut count=0;
+    let mut exec=format!("\"{}\"",exec);
+    for argv in  std::env::args(){
+        if count!=0{
+            if argv.len()!=0{
+                exec.push(' ');
+                exec.push_str(argv.as_str());
+            }
+        }
+        count +=1;
+    }
+    println!("{}",exec);
     if let Err(s)=Runas(user, domino, pswd, exec){
         println!("Error:{}",s);
         Message("错误提示\0".to_string(),s);

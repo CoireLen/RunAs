@@ -10,3 +10,4 @@ autoaes ={path="../autoaes"}
 win32run ={path="../win32run"}
 fltk = "1.3.4"
 md5 = "0.7.0"
+configster = "0.1.1"
