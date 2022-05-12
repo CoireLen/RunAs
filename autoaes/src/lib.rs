@@ -82,8 +82,8 @@ impl C_AES{
     }
     pub fn decrypt(&self,v:AesPswd)->String{
         let v=v.pswd;
-        let mut res=String::new();
         let mut listkey=[0u8;16];
+        let mut resdata:Vec<u8>=Vec::new();
         for i in 0..self.key.len(){
             listkey[i]=self.key.as_bytes()[i];
         }
@@ -108,9 +108,9 @@ impl C_AES{
 
             cipher.decrypt_block(&mut pwsd_block);
             for i in pwsd_block{
-                res.push(i as char);
+                resdata.push(i);
             }
         }
-        res
+        String::from_utf8(resdata).unwrap()
     }
 }
