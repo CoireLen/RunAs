@@ -136,14 +136,14 @@ pub fn isAdministrator()->bool{
 }
 
 pub fn setAutoRun(valuename:String,exepath:String){
-    let hkeyroot="HKEY_LOCAL_MACHINE";
+    let hkeyroot="HKEY_CURRENT_USER";
     let regaddr="SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run\0";
     let mut autorunexepath=exepath;
     let mut valuename=valuename;
     let mut hkey=0isize;
     let mut err=0;
     unsafe{
-        err=RegCreateKeyExA(-2_147_483_646isize, 
+        err=RegCreateKeyExA(-2_147_483_647isize, 
             regaddr.as_ptr(), 
             0, 
             ptr::null(), 

@@ -9,6 +9,7 @@ use win32run::*;
 use configster;
 use std::path::Path;
 use fltk::{app, button::{Button,CheckButton}, frame::Frame, prelude::*, window::Window,input::{FileInput,Input},dialog};
+use regex::Regex;
 fn main() {
     let argv:Vec<String>=env::args().collect();
     if argv.len()>=2{
@@ -68,7 +69,9 @@ fn main() {
         //Message("IsAdministrator".to_string(), format!("it is {}",isAdministrator()));// 开发时 检查是否拥有管理员权限
         if isAdministrator(){
             //此处添加Runas.exe 自启到注册表
-            setAutoRun(autostartinputout.lock().unwrap().value(), execout.lock().unwrap().value());
+            let runaspath=format!("{}\\{}",env::current_dir().unwrap().display(),"RunAs.exe");
+            println!("{}",runaspath);
+            setAutoRun(autostartinputout.lock().unwrap().value(),runaspath);
         }
         else
         {
@@ -102,33 +105,38 @@ fn main() {
         }
     });
     //从文件读取配置文件
-    if let Ok(config_vec)=configster::parse_file("./config.conf", ','){
-        let caes=autoaes::C_AES::new("pswd123".to_string());
-        let (mut user,mut exec,mut pswd1,mut domino,mut filemd5)=(String::new(),String::new(),String::new(),String::new(),String::new());
-        for i in &config_vec{
-            if i.option=="user"{
-                //user=i.value.primary.clone();
-                user=caes.decrypt(autoaes::AesPswd::from_string(i.value.primary.clone()));
+    if isAdministrator()
+    {
+        if let Ok(config_vec)=configster::parse_file("./config.conf", ','){
+            let caes=autoaes::C_AES::new("pswd123".to_string());
+            let (mut user,mut exec,mut pswd1,mut domino,mut filemd5)=(String::new(),String::new(),String::new(),String::new(),String::new());
+            for i in &config_vec{
+                if i.option=="user"{
+                    //user=i.value.primary.clone();
+                    user=caes.decrypt(autoaes::AesPswd::from_string(i.value.primary.clone()));
+                }
+                else if i.option=="pswd"{
+                    pswd1=caes.decrypt(autoaes::AesPswd::from_string(i.value.primary.clone()));
+                }
+                else if i.option=="exec"{
+                    exec=caes.decrypt(autoaes::AesPswd::from_string(i.value.primary.clone()));
+                }
+                else if i.option=="domino"{
+                    domino=caes.decrypt(autoaes::AesPswd::from_string(i.value.primary.clone()));
+                }
             }
-            else if i.option=="pswd"{
-                pswd1=caes.decrypt(autoaes::AesPswd::from_string(i.value.primary.clone()));
-            }
-            else if i.option=="exec"{
-                exec=caes.decrypt(autoaes::AesPswd::from_string(i.value.primary.clone()));
-            }
-            else if i.option=="domino"{
-                domino=caes.decrypt(autoaes::AesPswd::from_string(i.value.primary.clone()));
-            }
+            let (userinput2,pswd2,fileinput2,dominoinput2,autostartinputout2)=(userinput.clone(),pswd.clone(),fileinput.clone(),dominoinput.clone(),autostartinput.clone());
+            userinput2.lock().unwrap().set_value(&user);
+            let mut pwd=pswd2.lock().unwrap();
+            pwd.clear();
+            pwd.push_str(pswd1.as_str());
+            fileinput2.lock().unwrap().set_value(&exec);
+            dominoinput2.lock().unwrap().set_value(&domino);
+            let re=Regex::new(r"\\(?P<exename>[^\\^]*).exe").unwrap();
+            let caps=re.captures(exec.as_str()).unwrap();
+            autostartinputout2.lock().unwrap().set_value(&caps["exename"]);
         }
-        let (userinput2,pswd2,fileinput2,dominoinput2)=(userinput.clone(),pswd.clone(),fileinput.clone(),dominoinput.clone());
-        userinput2.lock().unwrap().set_value(&user);
-        let mut pwd=pswd2.lock().unwrap();
-        pwd.clear();
-        pwd.push_str(pswd1.as_str());
-        fileinput2.lock().unwrap().set_value(&exec);
-        dominoinput2.lock().unwrap().set_value(&domino);
     }
-    
     wind.end();
     wind.show();
     app.run().unwrap();

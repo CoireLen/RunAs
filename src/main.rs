@@ -4,7 +4,12 @@ use md5;
 use std::fs::File;
 use std::io::*;
 use configster;
+use std::env;
 fn main(){
+    let mut path=env::current_exe().unwrap();
+    path.pop();
+    env::set_current_dir(path);
+    //Message("Tips".to_string(), env::current_dir().unwrap().display().to_string());
     let config_vec=configster::parse_file("./config.conf", ',').unwrap();
     let (mut user,mut exec,mut pswd,mut domino,mut filemd5)=(String::new(),String::new(),String::new(),String::new(),String::new());
     let caes=autoaes::C_AES::new("pswd123".to_string());
